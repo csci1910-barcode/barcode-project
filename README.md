@@ -6,6 +6,17 @@
 
 Detecting low-stock and out-of-stock products on retail shelves using computer vision models.
 
+# Retail Shelf Stock & Vacancy Detection
+
+**Team Callsign:** Barcode  
+**Team Members:**  
+- Qazim Pali  
+- Feriha Ozturk  
+- Tahir Zogaj  
+
+## Project Overview
+Detecting low-stock and out-of-stock products on retail shelves using computer vision models (comparing one-stage, two-stage, and transformer-based detectors).
+
 ## Project Organization
 
 ```
