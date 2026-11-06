@@ -10,9 +10,9 @@ Detecting low-stock and out-of-stock products on retail shelves using computer v
 
 **Team Callsign:** Barcode  
 **Team Members:**  
-- Qazim Pali  
+- Qazim Pali   
+- Tahir Zogaj 
 - Feriha Ozturk  
-- Tahir Zogaj  
 
 ## Project Overview
 Detecting low-stock and out-of-stock products on retail shelves using computer vision models (comparing one-stage, two-stage, and transformer-based detectors).
