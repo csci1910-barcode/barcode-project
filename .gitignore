@@ -1,5 +1,9 @@
 # Data
-/data/
+# data/ is shared in git, except the full SKU-110K download (18 GB, over GitHub's limits).
+# Recreate it with `python -m barcode.dataset`; the 57 SKU-110K images we use are already
+# in data/processed/retail-gap/.
+/data/raw/SKU-110K/images/
+/data/raw/SKU-110K/labels/
 
 # Mac OS-specific storage files
 .DS_Store

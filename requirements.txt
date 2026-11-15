@@ -1,3 +1,4 @@
+imagehash
 ipython
 jupyterlab
 loguru
@@ -12,4 +13,5 @@ ruff
 scikit-learn
 tqdm
 typer
+ultralytics
 -e .

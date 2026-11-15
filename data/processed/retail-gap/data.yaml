@@ -1,0 +1,8 @@
+# retail-gap: built by notebooks/eda/1.0-qp-eda-and-cleaning.ipynb
+# no 'path' key: splits resolve relative to this file
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: gap

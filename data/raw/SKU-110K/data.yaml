@@ -1,0 +1,7 @@
+# SKU-110K (Ultralytics Platform export); no 'path' key: splits resolve relative to this file
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: object
