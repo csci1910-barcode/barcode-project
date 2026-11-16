@@ -4,7 +4,7 @@
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-Detecting low-stock and out-of-stock products on retail shelves using computer vision models. We will use deep learning models such as CNN & Yolo.
+Detecting low-stock and out-of-stock products on retail shelves using computer vision models. Deep Learning models will be used.
 
 # Retail Shelf Stock & Vacancy Detection
 
