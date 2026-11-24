@@ -19,7 +19,7 @@ Detecting low-stock and out-of-stock products on retail shelves using computer v
 
 ## Results
 
-Task: detect `gap` (empty shelf space) boxes. All numbers are on the held-out **test** split (174 images, grouped so no photo appears in two splits).
+Task: detect `gap` (empty shelf space) boxes. The table below is on the held-out **test** split (174 images, grouped so no photo appears in two splits).
 
 | Model | Precision | Recall | mAP50 | mAP50-95 | Tile F1 |
 |---|---|---|---|---|---|
@@ -27,6 +27,24 @@ Task: detect `gap` (empty shelf space) boxes. All numbers are on the held-out **
 | YOLO11n fine-tuned (+50 epochs) | 0.917 | 0.929 | 0.947 | 0.697 | 0.919 |
 
 Tile F1 is the 32×32 tile-level gap score at a confidence chosen on validation (0.60 baseline, 0.45 fine-tuned). Full tables are in `reports/yolo_finetune_comparison.csv`, and the changes and caveats are written up in [docs/finetune-yolo11n.md](docs/finetune-yolo11n.md).
+
+### Classical baselines vs. YOLO (tile-level task)
+
+The classical models cannot output boxes, so every model is scored on the same tile task: each image is resized to 416×416 and cut into a 13×13 grid of 32×32 tiles, and a tile is "gap" when more than half of it lies inside a gap box (YOLO's predicted boxes are converted the same way). The classical models use hand-made tile features (colour, brightness, edges, HOG, position). **These numbers are on the validation split (172 images).**
+
+| Model | Accuracy | Gap precision | Gap recall | Gap F1 | Empty-share error (lower is better) |
+|---|---|---|---|---|---|
+| Uniform random class | 0.498 | 0.136 | 0.494 | 0.213 | 0.365 |
+| Always pick one class (no gap) | 0.862 | 0.000 | 0.000 | 0.000 | 0.138 |
+| Naive Bayes | 0.684 | 0.233 | 0.568 | 0.331 | 0.206 |
+| Logistic regression | 0.777 | 0.362 | 0.812 | 0.500 | 0.173 |
+| Decision tree | 0.806 | 0.396 | 0.791 | 0.528 | 0.138 |
+| Random forest | 0.898 | 0.791 | 0.354 | 0.489 | 0.079 |
+| **SVM (RBF), best classical model** | 0.855 | 0.481 | 0.734 | 0.582 | 0.087 |
+| YOLO11n baseline (conf 0.25) | 0.959 | 0.801 | 0.929 | 0.860 | 0.032 |
+| YOLO11n fine-tuned (conf 0.25) | n/a | 0.861 | 0.912 | 0.886 | 0.023 |
+
+"Empty-share error" is the mean absolute difference between the predicted and labelled share of each shelf that is empty, the input to a restock rule. The classical rows come from `reports/baselines_tiles_val.csv` (`python -m barcode.modeling.baselines --split val`); the fine-tuned row comes from `reports/yolo_finetune_comparison.csv`. The best classical model (SVM, F1 0.58) is far behind even the 10-epoch YOLO11n (F1 0.86). Test-split numbers for the classical models were not computed.
 
 ## Reproducing our results
 
