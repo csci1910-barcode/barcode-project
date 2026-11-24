@@ -5,6 +5,7 @@ loguru
 matplotlib
 notebook
 numpy
+opencv-python<5
 pandas
 pip
 pytest

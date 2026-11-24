@@ -17,6 +17,68 @@ Detecting low-stock and out-of-stock products on retail shelves using computer v
 ## Project Overview
 Detecting low-stock and out-of-stock products on retail shelves using computer vision models (comparing one-stage, two-stage, and transformer-based detectors).
 
+## Results
+
+Task: detect `gap` (empty shelf space) boxes. All numbers are on the held-out **test** split (174 images, grouped so no photo appears in two splits).
+
+| Model | Precision | Recall | mAP50 | mAP50-95 | Tile F1 |
+|---|---|---|---|---|---|
+| YOLO11n baseline (10 epochs) | 0.864 | 0.894 | 0.930 | 0.648 | 0.891 |
+| YOLO11n fine-tuned (+50 epochs) | 0.917 | 0.929 | 0.947 | 0.697 | 0.919 |
+
+Tile F1 is the 32×32 tile-level gap score at a confidence chosen on validation (0.60 baseline, 0.45 fine-tuned). Full tables are in `reports/yolo_finetune_comparison.csv`, and the changes and caveats are written up in [docs/finetune-yolo11n.md](docs/finetune-yolo11n.md).
+
+## Reproducing our results
+
+Tested with Python 3.10. Training used an Apple M-series GPU (`mps`); the scripts pick CUDA or CPU automatically when MPS is not available (CPU is much slower).
+
+### 1. Set up the environment
+
+```bash
+git clone https://github.com/csci1910-barcode/barcode-project.git
+cd barcode-project
+python3.10 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+`requirements.txt` pins `opencv-python<5`: OpenCV 5 removed `HOGDescriptor`, which the classical baselines need.
+
+### 2. Data (already in the repo, no download needed)
+
+- `data/raw/retail-shelf-availability-coco/`: the Roboflow export, as downloaded.
+- `data/interim/retail-gap/`: `manifest.csv` (duplicate groups, scene, brightness, final split) and `sku110k_negatives.csv` (the 57 fully stocked shelves).
+- `data/processed/retail-gap/`: the cleaned YOLO-format dataset the models train on (3,239 train / 172 val / 174 test images, one class `gap`), described by `data.yaml`.
+
+To rebuild the processed data, run `notebooks/eda/1.0-qp-eda-and-cleaning.ipynb` top to bottom (fixed `SEED = 42`). The extra checks (split comparison, size shortcut, gap statistics) are in `notebooks/eda/1.1-extra-eda-cleaned-data.ipynb`. Re-running step 6 of notebook 1.0 also needs the SKU-110K images, which are not in git (18 GB): `python -m barcode.dataset`. Its image links expire, so see the docstring in `barcode/dataset.py` for getting a fresh export.
+
+### 3. Baseline YOLO11n (optional: the trained weights are committed)
+
+```bash
+yolo detect train model=yolo11n.pt data=data/processed/retail-gap/data.yaml \
+    epochs=10 imgsz=640 batch=16 device=mps name=baseline-yolo11n seed=0
+```
+
+All settings of the original run are in `runs/detect/baseline-yolo11n/args.yaml`. Training on MPS is not bit-exact, so expect small differences.
+
+### 4. Fine-tune and compare with the baseline
+
+```bash
+python -m barcode.modeling.finetune_yolo11n train      # 50 epochs, then compares (about 1.8 h on an M-series Mac)
+python -m barcode.modeling.finetune_yolo11n compare    # comparison only, using the weights in runs/detect/
+```
+
+This writes `runs/detect/finetune-yolo11n/` and `reports/yolo_finetune_comparison.csv`.
+
+### 5. Classical baselines vs. YOLO (tile-level task)
+
+```bash
+python -m barcode.modeling.baselines --split val
+python -m barcode.modeling.baselines --split test --weights runs/detect/finetune-yolo11n/weights/best.pt --yolo-conf 0.45
+```
+
+The first command writes `reports/baselines_tiles_val.csv` (Naive Bayes, logistic regression, decision tree, random forest, SVM and the baseline YOLO11n).
+
 ## Project Organization
 
 ```
