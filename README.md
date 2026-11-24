@@ -4,7 +4,7 @@
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-Detecting low-stock and out-of-stock products on retail shelves using computer vision models. Deep Learning models will be used.
+Detecting empty shelf space (out-of-stock gaps) on retail shelf photos with deep learning object detectors.
 
 # Retail Shelf Stock & Vacancy Detection
 
@@ -16,6 +16,16 @@ Detecting low-stock and out-of-stock products on retail shelves using computer v
 
 ## Project Overview
 Detecting low-stock and out-of-stock products on retail shelves using computer vision models (comparing one-stage, two-stage, and transformer-based detectors).
+
+## Key data findings
+
+From `notebooks/eda/1.0-qp-eda-and-cleaning.ipynb` and `1.1-extra-eda-cleaned-data.ipynb`:
+
+- **Fewer unique photos than files.** The Roboflow export has 4,588 images but only about 1,080 unique photos. Most training photos come with 3-6 augmented copies, often mirrored.
+- **The original split leaks.** 88% of the original val/test images have a copy in train, so we re-split 70/15/15 by near-duplicate group (`data/processed/retail-gap/`).
+- **Labels cleaned to one class.** Class `"0"` was a batch of gaps under another name (merged into `gap`), and `UROP` had no boxes (dropped).
+- **No full shelves in the source data.** Every Roboflow image contains a gap, so 57 fully stocked SKU-110K shelves were added as "no gap" images.
+- **Source shortcut.** Image size alone separates those 57 shelves from the gap images (AUC 1.0), so full-shelf scores are not trusted until the SKU-110K images match the Roboflow format.
 
 ## Results
 
@@ -74,7 +84,7 @@ The Roboflow link is the one given in the export's own `README.dataset.txt` (not
 - `data/interim/retail-gap/`: `manifest.csv` (duplicate groups, scene, brightness, final split) and `sku110k_negatives.csv` (the 57 fully stocked shelves).
 - `data/processed/retail-gap/`: the cleaned YOLO-format dataset the models train on (3,239 train / 172 val / 174 test images, one class `gap`), described by `data.yaml`.
 
-To rebuild the processed data, run `notebooks/eda/1.0-qp-eda-and-cleaning.ipynb` top to bottom (fixed `SEED = 42`). The extra checks (split comparison, size shortcut, gap statistics) are in `notebooks/eda/1.1-extra-eda-cleaned-data.ipynb`. Re-running step 6 of notebook 1.0 also needs the SKU-110K images, which are not in git (18 GB): `python -m barcode.dataset`. Its image links expire, so see the docstring in `barcode/dataset.py` for getting a fresh export.
+To rebuild the processed data, run `notebooks/eda/1.0-qp-eda-and-cleaning.ipynb` top to bottom (fixed `SEED = 42`). The extra checks (split comparison, size shortcut, gap statistics) are in `notebooks/eda/1.1-extra-eda-cleaned-data.ipynb`. Re-running section 7 of notebook 1.0 (the SKU-110K selection) also needs the SKU-110K images, which are not in git (18 GB): `python -m barcode.dataset`. Its image links expire, so see the docstring in `barcode/dataset.py` for getting a fresh export.
 
 ### 3. Baseline YOLO11n (optional: the trained weights are committed)
 
