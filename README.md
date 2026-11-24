@@ -46,6 +46,15 @@ pip install -r requirements.txt
 
 ### 2. Data (already in the repo, no download needed)
 
+Where the data comes from:
+
+| Dataset | Used for | Source | License |
+|---|---|---|---|
+| Retail shelf availability (Roboflow Universe, v2, exported January 2024) | the `gap` labels: 4,588 images, COCO format, resized to 416×416 | https://universe.roboflow.com/srm-university-52jqz/retail-shelf-avialability | CC BY 4.0 |
+| SKU-110K (Goldman et al., CVPR 2019) | 57 fully stocked shelves used as "no gap" images | https://platform.ultralytics.com/ultralytics/datasets/sku110k (download used here), original code and data: https://github.com/eg4000/SKU110K_CVPR19, paper: https://arxiv.org/abs/1904.00853 | see the original repository |
+
+The Roboflow link is the one given in the export's own `README.dataset.txt` (note the dataset's spelling "avialability"). Roboflow Universe blocks automated requests, so the link may need to be opened in a browser.
+
 - `data/raw/retail-shelf-availability-coco/`: the Roboflow export, as downloaded.
 - `data/interim/retail-gap/`: `manifest.csv` (duplicate groups, scene, brightness, final split) and `sku110k_negatives.csv` (the 57 fully stocked shelves).
 - `data/processed/retail-gap/`: the cleaned YOLO-format dataset the models train on (3,239 train / 172 val / 174 test images, one class `gap`), described by `data.yaml`.
