@@ -34,9 +34,6 @@ The classical models cannot output boxes, so every model is scored on the same t
 
 | Model | Accuracy | Gap precision | Gap recall | Gap F1 | Empty-share error (lower is better) |
 |---|---|---|---|---|---|
-| Uniform random class | 0.498 | 0.136 | 0.494 | 0.213 | 0.365 |
-| Always pick one class (no gap) | 0.862 | 0.000 | 0.000 | 0.000 | 0.138 |
-| Naive Bayes | 0.684 | 0.233 | 0.568 | 0.331 | 0.206 |
 | Logistic regression | 0.777 | 0.362 | 0.812 | 0.500 | 0.173 |
 | Decision tree | 0.806 | 0.396 | 0.791 | 0.528 | 0.138 |
 | Random forest | 0.898 | 0.791 | 0.354 | 0.489 | 0.079 |
