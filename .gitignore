@@ -4,6 +4,8 @@
 # in data/processed/retail-gap/.
 /data/raw/SKU-110K/images/
 /data/raw/SKU-110K/labels/
+# label caches Ultralytics writes next to the labels (machine-specific paths)
+/data/**/*.cache
 
 # Mac OS-specific storage files
 .DS_Store

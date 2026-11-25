@@ -1,0 +1,8 @@
+# shift-lab: held-out distribution-shift set (lab shelf), built by `python -m barcode.split`
+# evaluate once at the end with split=test; never train or select models on it
+train: ../retail-gap/images/train
+val: ../retail-gap/images/val
+test: images/shift
+
+names:
+  0: gap

@@ -1,5 +1,5 @@
-# retail-gap: built by notebooks/eda/1.0-qp-eda-and-cleaning.ipynb
-# no 'path' key: splits resolve relative to this file
+# retail-gap, checkpoint split v2: built by `python -m barcode.split`
+# store photos + SKU-110K full shelves; the lab shelf is held out in ../shift-lab
 train: images/train
 val: images/val
 test: images/test
