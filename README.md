@@ -27,9 +27,35 @@ From `notebooks/eda/1.0-qp-eda-and-cleaning.ipynb` and `1.1-extra-eda-cleaned-da
 - **No full shelves in the source data.** Every Roboflow image contains a gap, so 57 fully stocked SKU-110K shelves were added as "no gap" images.
 - **Source shortcut.** Image size alone separates those 57 shelves from the gap images (AUC 1.0), so full-shelf scores are not trusted until the SKU-110K images match the Roboflow format.
 
+## Checkpoint (2026-11-24)
+
+**One command, from the raw data to the saved validation metric** (about 15 minutes on a laptop CPU, after the setup in "Reproducing our results", step 1):
+
+```bash
+make checkpoint
+```
+
+It runs `python -m barcode.split` (raw Roboflow export + saved index → fixed split v2 in `data/processed/retail-gap/` and the held-out `data/processed/shift-lab/`) and then `python -m barcode.modeling.baselines --split val --seeds 0,1,2 --out-name checkpoint_baselines_val`, which writes `reports/checkpoint_baselines_val.csv` and `reports/checkpoint_baselines_val_summary.csv`.
+
+Run from a fresh clone by: **TODO (teammate's name, date, any difference from the numbers below)**.
+
+| Validation, split v2 (154 images, 26,026 tiles) | Gap F1, mean ± std over 3 seeds |
+|---|---|
+| Logistic regression | 0.554 ± 0.001 |
+| Random forest | 0.553 ± 0.001 |
+| **SVM (RBF), best non-deep baseline** | **0.608 ± 0.007** |
+| **MLP 128-64, simple neural baseline** | **0.634 ± 0.009** |
+| YOLO11n pilot (trained on split v1), one run | 0.856 |
+
+- **The split:** [data/README.md](data/README.md) (counts, grouping rule, the shift setting).
+- **Every run:** [experiments/README.md](experiments/README.md).
+- **Plan for the next weeks (one page):** [docs/checkpoint.md](docs/checkpoint.md).
+
 ## Results
 
-Task: detect `gap` (empty shelf space) boxes. The table below is on the held-out **test** split (174 images, grouped so no photo appears in two splits).
+Task: detect `gap` (empty shelf space) boxes. The table below is on the **test** split (174 images, grouped so no photo appears in two splits).
+
+> **Pilot runs, split v1 (before the checkpoint).** These YOLO runs were trained and scored on the pre-checkpoint split, which still contained the lab shelf, and were shown in our progress updates. Nothing was chosen on test. From the checkpoint on, the split is fixed (v2, see [data/README.md](data/README.md)), the lab shelf is the held-out distribution-shift set, and test and shift are evaluated once at the end. The validation baselines for the checkpoint are in the [Checkpoint](#checkpoint-2026-11-24) section.
 
 | Model | Precision | Recall | mAP50 | mAP50-95 | Tile F1 |
 |---|---|---|---|---|---|
@@ -82,9 +108,10 @@ The Roboflow link is the one given in the export's own `README.dataset.txt` (not
 
 - `data/raw/retail-shelf-availability-coco/`: the Roboflow export, as downloaded.
 - `data/interim/retail-gap/`: `manifest.csv` (duplicate groups, scene, brightness, final split) and `sku110k_negatives.csv` (the 57 fully stocked shelves).
-- `data/processed/retail-gap/`: the cleaned YOLO-format dataset the models train on (3,239 train / 172 val / 174 test images, one class `gap`), described by `data.yaml`.
+- `data/processed/retail-gap/`: the cleaned YOLO-format dataset the models train on (split v2: 2,862 train / 154 val / 157 test images, one class `gap`), described by `data.yaml`.
+- `data/processed/shift-lab/`: the held-out distribution-shift set (109 lab-shelf photos), evaluated once at the end.
 
-To rebuild the processed data, run `notebooks/eda/1.0-qp-eda-and-cleaning.ipynb` top to bottom (fixed `SEED = 42`). The extra checks (split comparison, size shortcut, gap statistics) are in `notebooks/eda/1.1-extra-eda-cleaned-data.ipynb`. Re-running section 7 of notebook 1.0 (the SKU-110K selection) also needs the SKU-110K images, which are not in git (18 GB): `python -m barcode.dataset`. Its image links expire, so see the docstring in `barcode/dataset.py` for getting a fresh export.
+To rebuild the processed data from the raw export, run `python -m barcode.split` (reads the saved index `data/interim/retail-gap/manifest.csv`; full details in [data/README.md](data/README.md)). The index itself was written by `notebooks/eda/1.0-qp-eda-and-cleaning.ipynb` (fixed `SEED = 42`), which also derives the duplicate rules. The extra checks (split comparison, size shortcut, gap statistics) are in `notebooks/eda/1.1-extra-eda-cleaned-data.ipynb`. Re-running section 7 of notebook 1.0 (the SKU-110K selection) also needs the SKU-110K images, which are not in git (18 GB): `python -m barcode.dataset`. Its image links expire, so see the docstring in `barcode/dataset.py` for getting a fresh export.
 
 ### 3. Baseline YOLO11n (optional: the trained weights are committed)
 
