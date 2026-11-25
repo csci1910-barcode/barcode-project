@@ -10,7 +10,10 @@ are scored on the same tiles of the chosen split.
 
     python -m barcode.modeling.baselines            # validation split
     python -m barcode.modeling.baselines --split test
-"""
+    python -m barcode.modeling.baselines --seeds 0,1,2 --out-name checkpoint_baselines_val
+
+With several seeds, each seed draws its own training subsample and model random state; the
+per-seed rows go to <out-name>.csv and the mean and standard deviation to <out-name>_summary.csv."""
 
 from pathlib import Path
 import time
@@ -24,6 +27,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
@@ -130,58 +134,75 @@ def score(name: str, y: np.ndarray, pred: np.ndarray, n_imgs: int, secs: float) 
     }
 
 
-@app.command()
-def main(
-    split: str = "val",
-    data_dir: Path = PROCESSED_DATA_DIR / "retail-gap",
-    weights: Path = PROJ_ROOT / "runs/detect/baseline-yolo11n/weights/best.pt",
-    yolo_conf: float = 0.25,
-    train_tiles: int = 150_000,
-    svm_tiles: int = 20_000,
-):
-    rng = np.random.default_rng(SEED)
-    X_tr, y_tr, _ = build(data_dir, "train")
-    X_ev, y_ev, ev_imgs = build(data_dir, split)
-    logger.info(f"train tiles {len(y_tr):,} ({y_tr.mean():.1%} gap), "
-                f"{split} tiles {len(y_ev):,} ({y_ev.mean():.1%} gap), {X_tr.shape[1]} features")
-
-    idx = rng.choice(len(y_tr), size=min(train_tiles, len(y_tr)), replace=False)
-    svm_idx = idx[:svm_tiles]
-
+def make_models(seed: int, idx: np.ndarray, svm_idx: np.ndarray) -> dict:
     def scaled(model):
         return make_pipeline(StandardScaler(), model)
 
-    models = {
-        "Uniform random class": (DummyClassifier(strategy="uniform", random_state=SEED), idx),
+    return {
+        "Uniform random class": (DummyClassifier(strategy="uniform", random_state=seed), idx),
         "Always pick one class (no gap)": (DummyClassifier(strategy="most_frequent"), idx),
         "Naive Bayes": (scaled(GaussianNB()), idx),
         "Logistic regression": (scaled(LogisticRegression(max_iter=2000,
                                                           class_weight="balanced")), idx),
         "Decision tree": (DecisionTreeClassifier(max_depth=12, class_weight="balanced",
-                                                 random_state=SEED), idx),
+                                                 random_state=seed), idx),
         "Random forest": (RandomForestClassifier(n_estimators=200, min_samples_leaf=2,
                                                  class_weight="balanced_subsample",
-                                                 n_jobs=-1, random_state=SEED), idx),
+                                                 n_jobs=-1, random_state=seed), idx),
         "SVM (RBF)": (scaled(SVC(kernel="rbf", class_weight="balanced",
-                                 random_state=SEED)), svm_idx),
+                                 random_state=seed)), svm_idx),
+        # simple neural baseline: a small MLP on the same tile features
+        "MLP (2 hidden layers, simple neural)": (scaled(MLPClassifier(
+            hidden_layer_sizes=(128, 64), early_stopping=True, max_iter=200,
+            random_state=seed)), idx),
     }
 
-    rows = []
-    for name, (model, rows_idx) in models.items():
-        t = time.time()
-        model.fit(X_tr[rows_idx], y_tr[rows_idx])
-        pred = model.predict(X_ev).astype(bool)
-        rows.append(score(name, y_ev, pred, len(ev_imgs), time.time() - t))
-        logger.info(f"{name}: F1 {rows[-1]['gap_f1']:.3f}")
 
-    t = time.time()
-    rows.append(score(f"YOLO11n (deep, conf {yolo_conf})", y_ev,
-                      yolo_tiles(weights, ev_imgs, yolo_conf), len(ev_imgs), time.time() - t))
+@app.command()
+def main(
+    split: str = "val",
+    data_dir: Path = PROCESSED_DATA_DIR / "retail-gap",
+    weights: Path = PROJ_ROOT / "runs/detect/baseline-yolo11n/weights/best.pt",
+    yolo: bool = True,
+    yolo_conf: float = 0.25,
+    seeds: str = str(SEED),
+    out_name: str = "",
+    train_tiles: int = 150_000,
+    svm_tiles: int = 20_000,
+):
+    X_tr, y_tr, _ = build(data_dir, "train")
+    X_ev, y_ev, ev_imgs = build(data_dir, split)
+    logger.info(f"train tiles {len(y_tr):,} ({y_tr.mean():.1%} gap), "
+                f"{split} tiles {len(y_ev):,} ({y_ev.mean():.1%} gap), {X_tr.shape[1]} features")
+
+    rows = []
+    for seed in [int(x) for x in seeds.split(",")]:
+        rng = np.random.default_rng(seed)
+        idx = rng.choice(len(y_tr), size=min(train_tiles, len(y_tr)), replace=False)
+        for name, (model, rows_idx) in make_models(seed, idx, idx[:svm_tiles]).items():
+            t = time.time()
+            model.fit(X_tr[rows_idx], y_tr[rows_idx])
+            pred = model.predict(X_ev).astype(bool)
+            rows.append({"seed": seed, **score(name, y_ev, pred, len(ev_imgs), time.time() - t)})
+            logger.info(f"seed {seed} {name}: F1 {rows[-1]['gap_f1']:.3f}")
+
+    if yolo:  # deterministic at inference, so scored once
+        t = time.time()
+        rows.append({"seed": SEED, **score(f"YOLO11n (deep, conf {yolo_conf})", y_ev,
+                                            yolo_tiles(weights, ev_imgs, yolo_conf),
+                                            len(ev_imgs), time.time() - t)})
 
     df = pd.DataFrame(rows)
-    out = REPORTS_DIR / f"baselines_tiles_{split}.csv"
+    out = REPORTS_DIR / f"{out_name or f'baselines_tiles_{split}'}.csv"
     df.to_csv(out, index=False)
     print(df.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
+    if df["seed"].nunique() > 1:
+        metrics = ["accuracy", "gap_precision", "gap_recall", "gap_f1", "empty_share_MAE"]
+        summary = df.groupby("model", sort=False)[metrics].agg(["mean", "std"])
+        summary.columns = [f"{m}_{a}" for m, a in summary.columns]
+        summary.insert(0, "seeds", df.groupby("model", sort=False)["seed"].nunique())
+        summary.to_csv(out.with_name(out.stem + "_summary.csv"))
+        print(summary.to_string(float_format=lambda v: f"{v:.3f}"))
     logger.success(f"saved {out}")
 
 

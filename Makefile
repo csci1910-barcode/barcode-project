@@ -67,6 +67,14 @@ data: requirements
 	$(PYTHON_INTERPRETER) barcode/dataset.py
 
 
+## Checkpoint pipeline: raw data -> fixed split v2 -> validation baselines, 3 seeds (~15 min, CPU)
+.PHONY: checkpoint
+checkpoint:
+	$(PYTHON_INTERPRETER) -m barcode.split
+	$(PYTHON_INTERPRETER) -m barcode.modeling.baselines --split val --seeds 0,1,2 \
+		--out-name checkpoint_baselines_val
+
+
 #################################################################################
 # Self Documenting Commands                                                     #
 #################################################################################
